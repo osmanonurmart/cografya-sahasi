@@ -5,7 +5,7 @@ window.Stats = {
 
   /* ---------------- sınav sonu karnesi ---------------- */
   showReport(s) {
-    const sure = Math.round((Date.now() - s.started) / 1000);
+    const sure = Math.round((s.elapsed || (Date.now() - s.started)) / 1000);
     const toplam = s.correct + s.wrong;
     const oran = toplam ? Math.round(s.correct / toplam * 100) : 0;
 
@@ -15,10 +15,9 @@ window.Stats = {
     const html = `
       <h2 style="margin-bottom:10px">Karne — ${esc(s.label)}</h2>
       <div class="story-stats" style="font-size:15px">
-        <div class="r"><span>Süre</span><b>${fmtSure(sure)}</b></div>
+        ${CFG.SHOW_EXAM_TIME ? `<div class="r"><span>Süre</span><b>${fmtSure(sure)}</b></div>` : ""}
         <div class="r"><span>Doğru / Yanlış</span><b>${s.correct} / ${s.wrong}</b></div>
         <div class="r"><span>İsabet</span><b>%${oran}</b></div>
-        <div class="r"><span>Soru başına ort.</span><b>${s.perQ.length ? (s.perQ.reduce((t,q)=>t+q.ms,0)/s.perQ.length/1000).toFixed(1) : 0} sn</b></div>
         <div class="r"><span>En çok zorlanılan soru</span><b>${zor ? esc(kisalt(zor.q, 34)) : "—"}</b></div>
         <div class="r"><span>En çok yanlış tıklanan il</span><b>${zorIl ? esc(titleTr(zorIl[0])) + " (" + zorIl[1] + ")" : "—"}</b></div>
       </div>
@@ -50,14 +49,15 @@ window.Stats = {
             fill="var(--ink)" font-family="monospace">%${oran}</text>`;
 
     document.getElementById("st-stats").innerHTML = `
-      <div class="r"><span>Süre</span><b>${fmtSure(sure)}</b></div>
+      ${CFG.SHOW_EXAM_TIME ? `<div class="r"><span>Süre</span><b>${fmtSure(sure)}</b></div>` : ""}
       <div class="r"><span>Doğru</span><b>${s.correct}</b></div>
       <div class="r"><span>Yanlış</span><b>${s.wrong}</b></div>
       <div class="r"><span>Zorlanılan il</span><b>${zorIl ? esc(titleTr(zorIl[0])) : "—"}</b></div>`;
 
     const kalan = Math.ceil((new Date(CFG.TARGET_DATE) - Date.now()) / 864e5);
     document.getElementById("st-foot").innerHTML =
-      `Sınava ${kalan} gün · ${new Date().toLocaleDateString("tr-TR")}<br>Coğrafya Sahası`;
+      (CFG.SHOW_COUNTDOWN && kalan > 0 ? `Sınava ${kalan} gün · ` : "") +
+      `${new Date().toLocaleDateString("tr-TR")}<br>Coğrafya Sahası`;
 
     card.hidden = false;
     html2canvas(card, { scale: 2, backgroundColor: null, logging: false })

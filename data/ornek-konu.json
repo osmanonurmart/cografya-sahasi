@@ -1,0 +1,12 @@
+[
+  {
+    "id": "t9",
+    "title": "Akarsular",
+    "desc": "Hangi akarsu hangi ilden geçer?",
+    "qa": [
+      { "q": "Kızılırmak hangi ilden doğar?", "a": ["Sivas"], "note": "Kızıldağ mevkii", "isImportant": true },
+      { "q": "Fırat Nehri hangi illerimizden geçer?", "a": ["Elazığ", "Şanlıurfa", "Adıyaman", "Malatya"] },
+      { "q": "Sakarya Nehri hangi ilden denize dökülür?", "a": ["Sakarya"] }
+    ]
+  }
+]

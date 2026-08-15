@@ -3,19 +3,24 @@
    ========================================================= */
 window.CFG = {
   TARGET_DATE: "2026-10-11T10:00:00",   // hedef sınav: buradan değiştir
+  SHOW_TIMER: true,                     // soru üstündeki saniye sayacı
+  SHOW_COUNTDOWN: true,                 // üstteki "sınava X gün" bloğu
+  SHOW_EXAM_TIME: true,                 // karnede süre satırları
   MAP: { W: 1200, H: 760 },
   EXAM_SIZE: 18,
   HINT_AFTER_WRONG: 3,                  // kaç yanlıştan sonra ipucu
   HINT_MS: 1500,
   WRONG_FLASH_MS: 420,
+  NEXT_DELAY_MS: 620,                   // doğru bilindiğinde otomatik geçiş gecikmesi
   API_BASE: "http://localhost:5099",    // C# Local API; kapalıysa localStorage'a düşer
   USE_API: false,                       // true yaparsan tüm okuma/yazma API'ye gider
   LS: {                                 // localStorage anahtarları tek yerde
-    topics: "cs.topics",
-    srs:    "cs.srs",
-    wrong:  "cs.wrongMap",
-    days:   "cs.examDays",
-    prefs:  "cs.prefs"
+    topics:  "cs.topics",
+    srs:     "cs.srs",
+    wrong:   "cs.wrongMap",
+    days:    "cs.examDays",
+    prefs:   "cs.prefs",
+    session: "cs.session"               // yarım kalan test
   }
 };
 

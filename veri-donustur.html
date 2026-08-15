@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Veri dönüştürücü — GeoJSON ➜ JS</title>
+<style>
+  :root{--ink:#1E2A2F;--soft:#5B6B72;--line:#C9BFAC;--accent:#2B6C8F;--ok:#2E7D5B;--bad:#B4453C}
+  body{font-family:"Segoe UI",system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;
+       color:var(--ink);background:#F2EEE4;line-height:1.5}
+  h1{font-size:1.4rem;margin-bottom:4px}
+  p.lead{color:var(--soft);margin-top:0}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:44px 20px;text-align:center;
+        background:#FBF8F1;cursor:pointer;transition:.15s}
+  .drop.on{border-color:var(--accent);background:#EAF2F7}
+  .drop b{display:block;font-size:1.05rem;margin-bottom:6px}
+  .drop span{color:var(--soft);font-size:.88rem}
+  #log{margin-top:18px;font-family:ui-monospace,Consolas,monospace;font-size:.82rem;
+       background:#FBF8F1;border:1px solid var(--line);border-radius:10px;padding:14px;
+       white-space:pre-wrap;min-height:40px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  button{font:inherit;padding:9px 16px;border-radius:8px;border:1px solid var(--accent);
+         background:var(--accent);color:#F2EEE4;cursor:pointer;margin-top:14px}
+  button[disabled]{opacity:.4;cursor:default}
+  code{background:#E7E1D3;padding:1px 5px;border-radius:4px}
+  ol{padding-left:20px} li{margin:6px 0}
+</style>
+</head>
+<body>
+
+<h1>GeoJSON ➜ JS dönüştürücü</h1>
+<p class="lead">İnternet gerekmez, veri hiçbir yere gitmez — hepsi tarayıcının içinde çalışır.</p>
+
+<div class="drop" id="drop">
+  <b>tr-cities.json dosyasını buraya sürükle</b>
+  <span>ya da tıklayıp seç</span>
+  <input type="file" id="file" accept=".json,application/json" hidden>
+</div>
+
+<div id="log">Dosya bekleniyor…</div>
+<button id="dl" disabled>tr-cities-data.js indir</button>
+
+<h2 style="font-size:1.05rem;margin-top:34px">Sonra ne yapacaksın</h2>
+<ol>
+  <li>İnen <code>tr-cities-data.js</code> dosyasını projedeki <code>js/</code> klasörüne at.</li>
+  <li><code>index.html</code>'e çift tıkla. Bitti.</li>
+</ol>
+
+<script>
+const drop = document.getElementById("drop");
+const fileEl = document.getElementById("file");
+const log = document.getElementById("log");
+const dl = document.getElementById("dl");
+let output = null;
+
+drop.onclick = () => fileEl.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("on"); };
+drop.ondragleave = () => drop.classList.remove("on");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("on"); handle(e.dataTransfer.files[0]); };
+fileEl.onchange = e => handle(e.target.files[0]);
+
+// İl adının hangi property altında olduğunu bilmiyoruz — aday listesini tarıyoruz.
+const ADAYLAR = ["name","NAME","Name","name_tr","NAME_1","ADM1_TR","il","IL","il_adi","ilAdi","sehir","province","PROVINCE","text"];
+
+function handle(f) {
+  if (!f) return;
+  log.textContent = "Okunuyor: " + f.name + " (" + (f.size/1024/1024).toFixed(2) + " MB)…";
+  const r = new FileReader();
+  r.onload = () => {
+    try { analiz(JSON.parse(r.result), f.name); }
+    catch (err) { log.innerHTML = '<span class="bad">JSON okunamadı: ' + err.message + '</span>'; }
+  };
+  r.readAsText(f, "utf-8");
+}
+
+function analiz(gj, adi) {
+  let sat = [];
+
+  if (gj.type === "Topology") {
+    log.innerHTML = '<span class="bad">Bu dosya TopoJSON. Bu araç GeoJSON bekliyor.\n' +
+      'mapshaper.org üzerine sürükleyip Export ➜ GeoJSON diyerek çevirebilirsin.</span>';
+    return;
+  }
+  if (!gj.features || !gj.features.length) {
+    log.innerHTML = '<span class="bad">features dizisi bulunamadı. Bu bir FeatureCollection değil.</span>';
+    return;
+  }
+
+  sat.push("Dosya: " + adi);
+  sat.push("Feature sayısı: " + gj.features.length + (gj.features.length === 81 ? "  ✓ (81 il)" : "  ⚠ 81 değil"));
+
+  const props = gj.features[0].properties || {};
+  sat.push("İlk kaydın alanları: " + Object.keys(props).join(", "));
+
+  // ad alanını bul
+  let key = ADAYLAR.find(k => typeof props[k] === "string" && props[k].trim());
+  if (!key) {
+    key = Object.keys(props).find(k => typeof props[k] === "string" &&
+          props[k].length > 2 && props[k].length < 30 && !/^\d+$/.test(props[k]));
+  }
+  if (!key) {
+    log.innerHTML = sat.join("\n") + '\n<span class="bad">İl adı alanı bulunamadı. Alan adını bana söyle, elle ayarlayayım.</span>';
+    return;
+  }
+  sat.push('İl adı alanı: "' + key + '"  →  örnek: ' + props[key]);
+
+  // hepsini "name" altına normalize et
+  let bos = 0;
+  gj.features.forEach(f => {
+    f.properties = f.properties || {};
+    const v = f.properties[key];
+    if (!v) { bos++; return; }
+    f.properties.name = String(v).trim();
+  });
+  if (bos) sat.push('<span class="bad">' + bos + " kaydın adı boş.</span>");
+
+  const adlar = gj.features.map(f => f.properties.name).filter(Boolean);
+  sat.push("Örnek iller: " + adlar.slice(0, 6).join(", "));
+
+  const tekrar = adlar.filter((a, i) => adlar.indexOf(a) !== i);
+  if (tekrar.length) sat.push('<span class="bad">Tekrar eden ad: ' + [...new Set(tekrar)].join(", ") + "</span>");
+
+  // gereksiz alanları at → dosya boyutu düşer
+  gj.features.forEach(f => { f.properties = { name: f.properties.name }; });
+
+  output = "/* Otomatik üretildi — " + adi + " */\n" +
+           "window.TR_CITIES = " + JSON.stringify(gj) + ";\n";
+
+  sat.push('<span class="ok">Hazır. Çıktı boyutu: ' + (output.length/1024/1024).toFixed(2) + " MB</span>");
+  log.innerHTML = sat.join("\n");
+  dl.disabled = false;
+}
+
+dl.onclick = () => {
+  const b = new Blob([output], { type: "text/javascript;charset=utf-8" });
+  const u = URL.createObjectURL(b);
+  const a = document.createElement("a");
+  a.href = u; a.download = "tr-cities-data.js";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 4000);
+};
+</script>
+</body>
+</html>

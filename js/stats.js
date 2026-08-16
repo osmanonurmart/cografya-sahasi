@@ -10,7 +10,7 @@ window.Stats = {
     const oran = toplam ? Math.round(s.correct / toplam * 100) : 0;
 
     const zor = s.perQ.slice().sort((a, b) => b.wrong - a.wrong || b.ms - a.ms)[0];
-    const zorIl = Object.entries(s.wrongCities).sort((a, b) => b[1] - a[1])[0];
+    const zorIl = Object.entries(s.wrongCities || {}).sort((a, b) => b[1] - a[1])[0];
 
     const html = `
       <h2 style="margin-bottom:10px">Karne — ${esc(s.label)}</h2>
@@ -76,6 +76,7 @@ window.Stats = {
 
   /* ---------------- GitHub tarzı çalışma takvimi ---------------- */
   renderStreak() {
+    if (!CFG.SHOW_STREAK) return;
     const days = Store.examDays();
     const end = new Date(CFG.TARGET_DATE);
     const start = new Date(end); start.setDate(start.getDate() - 364);

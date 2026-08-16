@@ -6,8 +6,10 @@
    ========================================================= */
 window.Map81 = {
   svg: null, root: null, path: null, features: [],
-  byKey: {},                 // "SİVAS" -> {feature, node}
+  byKey: {},                 // "SİVAS"      -> {f, node}
+  byRiver: {},               // "KIZILIRMAK" -> {node}
   onCityClick: null,
+  onRiverClick: null,
   tip: null,
 
   async init() {
@@ -76,31 +78,12 @@ window.Map81 = {
 
     this._buildRegionFallback(gRegionFill);
     await this._loadRegionOutlines();
-    this._initZoom();
+    this._loadRivers();
     this._initTip();
     return this;
   },
 
-  /* ---------- zoom / pan (anahtarla açılır) ---------- */
-  _initZoom() {
-    this._zoom = d3.zoom().scaleExtent([1, 8])
-      .on("zoom", () => { this.root.attr("transform", d3.event.transform); });
-    d3.select("#btn-zoom-reset").on("click", () => this.resetZoom());
-    this.setZoom(false);
-  },
-
-  setZoom(on) {
-    if (!this._zoom) return;
-    if (on) this.svg.call(this._zoom);
-    else { this.svg.on(".zoom", null); this.resetZoom(); }
-    this._zoomOn = !!on;
-  },
-
-  resetZoom() {
-    if (!this._zoom) return;
-    this.svg.transition().duration(300).call(this._zoom.transform, d3.zoomIdentity);
-    this.root.transition().duration(300).attr("transform", null);
-  },
+  /* Yakınlaştırma tamamen kaldırıldı — harita sabit. */
 
   /* ---------- tooltip ---------- */
   _initTip() {
@@ -226,6 +209,108 @@ window.Map81 = {
     };
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
   }
+};
+
+/* ---------- akarsular ve göller ---------- */
+Map81._loadRivers = function () {
+  const data = window.TR_AKARSULAR;
+  if (!data || !data.features || !data.features.length) return;
+
+  const self = this;
+  const g = d3.select("#akarsular");
+
+  // görünmez kalın vuruş katmanı — ince çizgiye parmakla isabet zor
+  g.selectAll("path.river-hit").data(data.features).enter().append("path")
+    .attr("class", "river-hit")
+    .attr("d", this.path)
+    .attr("data-river", d => normTr(d.properties.name))
+    .on("click", function (d) {
+      if (self.onRiverClick) self.onRiverClick(normTr(d.properties.name), d.properties.name, this);
+    })
+    .on("mousemove", function (d) { self._tipShow(d.properties.name); })
+    .on("mouseout", function () { self._tipHide(); });
+
+  // görünen ince çizgi
+  g.selectAll("path.river").data(data.features).enter().append("path")
+    .attr("class", "river")
+    .attr("d", this.path)
+    .attr("data-river", d => normTr(d.properties.name))
+    .each(function (d) {
+      const k = normTr(d.properties.name);
+      (self.byRiver[k] = self.byRiver[k] || { nodes: [] }).nodes.push(this);
+    });
+
+  // her akarsu için tek bir küçük nokta + etiket (ilden daha silik)
+  const seen = {};
+  data.features.forEach(d => {
+    const k = normTr(d.properties.name);
+    if (!k || seen[k]) return;
+    seen[k] = 1;
+    const c = self.path.centroid(d);
+    if (!c || isNaN(c[0])) return;
+    g.append("circle").attr("class", "river-dot").attr("cx", c[0]).attr("cy", c[1]).attr("r", 2.2);
+    g.append("text").attr("class", "river-label").attr("x", c[0]).attr("y", c[1] - 5)
+      .text(d.properties.name);
+  });
+
+  if (window.TR_GOLLER && TR_GOLLER.features) {
+    d3.select("#goller").selectAll("path").data(TR_GOLLER.features).enter()
+      .append("path").attr("class", "lake").attr("d", this.path);
+  }
+  this.hasRivers = true;
+};
+
+Map81.setRiversVisible = function (on) {
+  document.body.classList.toggle("rivers-on", !!on);
+};
+
+Map81.setRiver = function (key, cls, on) {
+  const e = this.byRiver[normTr(key)]; if (!e) return;
+  e.nodes.forEach(n => d3.select(n).classed(cls, on !== false));
+};
+
+Map81.paintRivers = function (names, cls) {
+  (names || []).forEach(n => this.setRiver(n, cls, true));
+};
+
+Map81.clearRivers = function (cls) {
+  const sel = d3.selectAll(".river");
+  if (cls) sel.classed(cls, false);
+  else sel.attr("class", "river");
+};
+
+/* ---------- il üstü balon (ilçe bilgisi) ---------- */
+Map81.popup = function (items, ms) {
+  const layer = document.getElementById("popup-layer");
+  const svg = document.getElementById("tr-map");
+  if (!layer || !svg) return;
+  this.clearPopups();
+
+  const vb = svg.viewBox.baseVal;            // SVG iç koordinatları
+  const rect = svg.getBoundingClientRect();  // ekrandaki gerçek boyut
+  const box = layer.getBoundingClientRect();
+  const sx = rect.width / vb.width, sy = rect.height / vb.height;
+
+  items.forEach(it => {
+    const e = this.byKey[cityKey(it.key)]; if (!e) return;
+    const c = this.path.centroid(e.f);
+    const el = document.createElement("div");
+    el.className = "map-popup";
+    el.innerHTML = `<b>${it.title}</b>${it.text ? "<span>" + it.text + "</span>" : ""}`;
+    el.style.left = (rect.left - box.left + c[0] * sx) + "px";
+    el.style.top  = (rect.top  - box.top  + c[1] * sy) + "px";
+    layer.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("on"));
+  });
+
+  clearTimeout(this._popT);
+  this._popT = setTimeout(() => this.clearPopups(), ms || CFG.POPUP_MS);
+};
+
+Map81.clearPopups = function () {
+  const layer = document.getElementById("popup-layer");
+  if (layer) layer.innerHTML = "";
+  clearTimeout(this._popT);
 };
 
 /* FileSaver.js yerine native indirme — bir bağımlılık eksildi */

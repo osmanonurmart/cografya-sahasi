@@ -8,7 +8,7 @@ window.Quiz = {
   mode: "normal",
   topicId: null,
   queue: [], idx: -1, cur: null,
-  found: null, wrongInQ: 0, qStartedAt: 0,
+  found: null, foundR: null, wrongInQ: 0, qStartedAt: 0,
   session: null,
   active: false,
   waiting: false,        // "Sonraki soru" butonu bekleniyor mu
@@ -109,11 +109,14 @@ window.Quiz = {
 
     this.cur = this.queue[this.idx];
     this.found = new Set();
+    this.foundR = new Set();
     this.wrongInQ = 0;
     this.qStartedAt = Date.now();
 
-    Map81.clear();
+    Map81.clear(); Map81.clearRivers(); Map81.clearPopups();
     UI.setProgress(this.idx, this.queue.length);
+
+    if (this.cur.ar && this.cur.ar.length) { Map81.setRiversVisible(true); UI.syncRiverSwitch(true); }
 
     if (this.mode === "reverse")    this._renderReverse();
     else if (this.mode === "atlas") this._renderAtlas();
@@ -140,7 +143,7 @@ window.Quiz = {
     Sfx.finish();
     if (this.mode === "exam") Store.markExamDay(this.session.correct);
     Stats.showReport(this.session);
-    Stats.renderStreak();
+    if (CFG.SHOW_STREAK) Stats.renderStreak();
   },
 
   /* ---------------- harita tıklaması ---------------- */
@@ -149,7 +152,7 @@ window.Quiz = {
     if (!this.active || this.waiting) return;
     if (this.mode === "atlas" || this.mode === "reverse") return;
 
-    const answers = this.cur.a.map(cityKey);
+    const answers = (this.cur.a || []).map(cityKey);
     if (answers.indexOf(key) === -1) {
       // YANLIŞ: anlık kırmızı, sonra orijinaline döner (harita ezber için temiz kalır)
       Map81.flashWrong(node);
@@ -174,9 +177,41 @@ window.Quiz = {
     this.session.correct++;
     UI.setScore();
     UI.renderFound(this.cur, this.found);
+    const notu = (this.cur.notes || {})[key];
+    if (notu) Map81.popup([{ key, title: titleCaseTr(key), text: notu }]);
 
-    // hepsi bulundu → otomatik geç
-    if (this.found.size === new Set(answers).size) this._questionDone(true, false);
+    if (this._tamam()) this._questionDone(true, false);
+  },
+
+  /* akarsuya tıklama */
+  onRiver(key, name) {
+    if (UI.pickMode) return UI.pickRiver(key, name);
+    if (!this.active || this.waiting) return;
+    if (this.mode === "atlas" || this.mode === "reverse") return;
+
+    const hedef = (this.cur.ar || []).map(normTr);
+    if (hedef.indexOf(key) === -1) {
+      Map81.setRiver(key, "is-wrong", true);
+      setTimeout(() => Map81.setRiver(key, "is-wrong", false), CFG.WRONG_FLASH_MS);
+      Sfx.wrong();
+      this.wrongInQ++; this.session.wrong++;
+      UI.setScore();
+      return;
+    }
+    if (this.foundR.has(key)) return;
+    this.foundR.add(key);
+    Map81.setRiver(key, "is-correct", true);
+    Sfx.correct();
+    this.session.correct++;
+    UI.setScore();
+    UI.renderFound(this.cur, this.found, false, this.foundR);
+    if (this._tamam()) this._questionDone(true, false);
+  },
+
+  _tamam() {
+    const il = new Set((this.cur.a || []).map(cityKey)).size;
+    const ak = new Set((this.cur.ar || []).map(normTr)).size;
+    return this.found.size >= il && this.foundR.size >= ak;
   },
 
   /* bekle=true ise "Sonraki soru" butonuna basılmasını bekler */
@@ -192,7 +227,7 @@ window.Quiz = {
 
     if (bekle) {
       this.waiting = true;
-      UI.renderFound(this.cur, this.found, true);   // notu (ilçe) burada açılır
+      UI.renderFound(this.cur, this.found, true, this.foundR);
       UI.toggleActionButtons();
     } else {
       setTimeout(() => this.next(), CFG.NEXT_DELAY_MS);
@@ -203,19 +238,30 @@ window.Quiz = {
   skip() {
     if (!this.active || this.waiting) return;
     if (this.mode === "atlas") return this.next();
-    Map81.paint(this.cur.a, "is-correct");
+    this._cevabiAc();
     this._questionDone(false, true);
   },
 
   reveal() {
     if (!this.active || this.waiting || !this.cur) return;
-    Map81.paint(this.cur.a, "is-correct");
+    this._cevabiAc();
     this._questionDone(false, true);
+  },
+
+  _cevabiAc() {
+    Map81.paint(this.cur.a, "is-correct");
+    Map81.paintRivers(this.cur.ar, "is-correct");
+    const n = this.cur.notes || {};
+    const balonlar = (this.cur.a || [])
+      .filter(c => n[cityKey(c)])
+      .map(c => ({ key: c, title: c, text: n[cityKey(c)] }));
+    if (balonlar.length) Map81.popup(balonlar);
   },
 
   /* ---------------- tersten mod ---------------- */
   _renderReverse() {
     Map81.paint(this.cur.a, "is-correct");
+    Map81.paintRivers(this.cur.ar, "is-correct");
     const pool = this.topicId
       ? Store.topic(this.topicId).qa
       : Store.allQuestions().filter(q => q.topicId === this.cur.topicId);
@@ -235,6 +281,11 @@ window.Quiz = {
   /* ---------------- görsel atlas ---------------- */
   _renderAtlas() {
     Map81.paint(this.cur.a, "is-atlas");
+    Map81.paintRivers(this.cur.ar, "is-correct");
+    const na = this.cur.notes || {};
+    const b = (this.cur.a || []).filter(c => na[cityKey(c)])
+              .map(c => ({ key: c, title: c, text: na[cityKey(c)] }));
+    if (b.length) Map81.popup(b, 60000);
     UI.renderAtlas(this.cur);
   }
 };
@@ -288,3 +339,5 @@ window.shuffle = function (arr) {
   }
   return a;
 };
+
+window.titleCaseTr = k => k.charAt(0) + k.slice(1).toLocaleLowerCase('tr-TR');

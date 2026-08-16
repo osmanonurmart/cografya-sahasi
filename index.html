@@ -6,7 +6,6 @@
 <title>Coğrafya Sahası — KPSS Pratik</title>
 <link rel="stylesheet" href="css/style.css">
 
-<!-- Ana ekrana ekleme (PWA) -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2B6C8F">
 <meta name="mobile-web-app-capable" content="yes">
@@ -15,11 +14,19 @@
 <meta name="apple-mobile-web-app-title" content="Coğrafya 81">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 
-<!-- OFFLINE: bu iki dosyayı vendor/ klasörüne indir. Detay: OFFLINE-KURULUM.md -->
 <script src="vendor/d3.v5.min.js"></script>
 <script src="vendor/html2canvas.min.js"></script>
 </head>
 <body>
+
+<!-- ============ PROFİL SEÇİM EKRANI ============ -->
+<div class="profile-screen" id="profile-screen" hidden>
+  <div class="ps-inner">
+    <h1>Kim çalışıyor?</h1>
+    <div class="ps-grid" id="ps-grid"></div>
+    <button class="ghost" id="ps-manage">Düzenle</button>
+  </div>
+</div>
 
 <!-- ============ ÜST ŞERİT ============ -->
 <header class="topbar">
@@ -29,119 +36,159 @@
   </div>
 
   <div class="score" id="scoreboard">
-    <span class="score-cell ok">   <b id="sc-correct">0</b><small>doğru</small></span>
-    <span class="score-cell bad">  <b id="sc-wrong">0</b><small>yanlış</small></span>
-    <span class="score-cell rate"> <b id="sc-rate">—</b><small>isabet</small></span>
+    <span class="score-cell ok">  <b id="sc-correct">0</b><small>doğru</small></span>
+    <span class="score-cell bad"> <b id="sc-wrong">0</b><small>yanlış</small></span>
+    <span class="score-cell rate"><b id="sc-rate">—</b><small>isabet</small></span>
   </div>
 
-  <div class="countdown" id="countdown" title="Hedef sınav tarihine kalan süre">
+  <div class="countdown" id="countdown" hidden>
     <b id="cd-days">—</b><small>gün <span id="cd-clock"></span></small>
   </div>
 
   <div class="switches">
-    <button class="sw" id="sw-theme"  aria-pressed="false" title="Gece modu">Gece</button>
     <button class="sw" id="sw-blind"  aria-pressed="false" title="İl isimlerini gizle">Kör harita</button>
     <button class="sw" id="sw-regions"aria-pressed="false" title="Bölge/bölüm sınırları">Bölgeler</button>
+    <button class="sw" id="sw-rivers" aria-pressed="false" title="Akarsu ve göl katmanı">Akarsular</button>
     <button class="sw" id="sw-sound"  aria-pressed="true"  title="Ses ve titreşim">Ses</button>
   </div>
+
+  <button class="avatar" id="btn-profile" title="Kullanıcı değiştir">?</button>
 </header>
 
-<!-- ============ HARİTA ============ -->
+<!-- ============ SAHNE ============ -->
 <main class="stage">
+
+  <!-- ---------- HARİTA ---------- -->
   <section class="map-pane">
     <div id="map_container"></div>
+    <div class="popup-layer" id="popup-layer"></div>
 
     <div class="map-tools">
       <button class="ghost" id="btn-analysis">Analizim (hata ısı haritası)</button>
-      <button class="ghost" id="btn-download-map">Haritayı indir</button>
       <span class="legend" id="legend"></span>
-    </div>
-
-    <div class="map-zoom">
-      <button class="ghost" id="btn-zoom-reset" hidden>Sıfırla</button>
-      <button class="sw" id="btn-zoom-toggle" aria-pressed="false">Yakınlaştırma: kapalı</button>
     </div>
   </section>
 
-  <!-- ============ SORU PANELİ ============ -->
-  <section class="quiz-pane">
-    <div class="resume-bar" id="resume-bar" hidden>
-      <span id="resume-text"></span>
-      <button class="accent" id="btn-resume">Devam et</button>
-      <button class="ghost" id="btn-discard">Sil</button>
+  <!-- ---------- SAĞ PANEL ---------- -->
+  <section class="side-pane">
+
+    <div class="workspace-switch" role="tablist">
+      <button class="ws is-on" data-ws="solve" role="tab">Test çöz</button>
+      <button class="ws"       data-ws="build" role="tab">Soru oluştur</button>
     </div>
 
-    <div class="progress-wrap">
-      <div class="progress-meta">
-        <span id="pg-label">Bir konu seç</span>
-        <span id="pg-count">0 / 0</span>
+    <!-- ======= ÇÖZ ======= -->
+    <div id="ws-solve">
+      <div class="resume-bar" id="resume-bar" hidden>
+        <span id="resume-text"></span>
+        <button class="accent" id="btn-resume">Devam et</button>
+        <button class="ghost" id="btn-discard">Sil</button>
       </div>
-      <div class="progress-track"><div class="progress-fill" id="pg-fill"></div></div>
+
+      <div class="progress-wrap">
+        <div class="progress-meta">
+          <span id="pg-label">Bir konu seç</span>
+          <span id="pg-count">0 / 0</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="pg-fill"></div></div>
+      </div>
+
+      <div class="question-card" id="question-card">
+        <div class="q-head">
+          <span class="q-topic" id="q-topic">—</span>
+          <span class="q-timer" id="q-timer" hidden>0.0 sn</span>
+        </div>
+        <p class="q-text" id="q-text">Aşağıdaki konulardan birine çift tıkla.</p>
+        <div class="q-found" id="q-found"></div>
+        <div class="q-actions">
+          <button class="accent" id="btn-next"   hidden>Sonraki soru →</button>
+          <button class="ghost"  id="btn-skip"   hidden>Pas geç</button>
+          <button class="ghost"  id="btn-reveal" hidden>Cevabı göster</button>
+          <button class="ghost"  id="btn-pause"  hidden>Duraklat</button>
+          <button class="ghost danger" id="btn-stop" hidden>Bitir</button>
+        </div>
+        <div class="q-options" id="q-options" hidden></div>
+      </div>
+
+      <div class="mode-row">
+        <span class="mode-label">Mod</span>
+        <button class="mode is-on" data-mode="normal">Normal</button>
+        <button class="mode" data-mode="reverse">Tersten</button>
+        <button class="mode" data-mode="atlas">Görsel Atlas</button>
+        <button class="mode accent" id="btn-exam">18’lik Deneme</button>
+      </div>
+
+      <!-- konu listesi -->
+      <div class="topics-block">
+        <div class="topics-head">
+          <h3>Konular</h3>
+          <span class="hint">çift tıkla → başlat</span>
+          <label class="ico file-btn" title="İçe aktar">⤒
+            <input type="file" id="import-file" accept="application/json,.json,.txt" hidden>
+          </label>
+          <button class="ico" id="btn-export-all" title="Tümünü dışa aktar">⤓</button>
+        </div>
+        <div class="topic-list" id="topic-list"></div>
+      </div>
     </div>
 
-    <div class="question-card" id="question-card">
-      <div class="q-head">
-        <span class="q-topic" id="q-topic">—</span>
-        <span class="q-badge" id="q-badge" hidden>Çıkmış Soru ★</span>
-        <span class="q-timer" id="q-timer" hidden>0.0 sn</span>
+    <!-- ======= OLUŞTUR ======= -->
+    <div id="ws-build" hidden>
+      <div class="build-tabs">
+        <button class="bt is-on" data-bt="form">Tek tek</button>
+        <button class="bt"       data-bt="text">Metinden toplu</button>
       </div>
-      <p class="q-text" id="q-text">Aşağıdan bir konu kartı seçip “Teste başla” de.</p>
-      <div class="q-found" id="q-found"></div>
-      <div class="q-actions">
-        <button class="accent" id="btn-next"   hidden>Sonraki soru →</button>
-        <button class="ghost"  id="btn-skip"   hidden>Pas geç</button>
-        <button class="ghost"  id="btn-reveal" hidden>Cevabı göster</button>
-        <button class="ghost"  id="btn-pause"  hidden>Duraklat</button>
-        <button class="ghost danger" id="btn-stop" hidden>Bitir</button>
-      </div>
-      <!-- Tersten mod cevap şıkları buraya basılır -->
-      <div class="q-options" id="q-options" hidden></div>
-    </div>
 
-    <div class="mode-row">
-      <span class="mode-label">Mod</span>
-      <button class="mode is-on" data-mode="normal">Normal</button>
-      <button class="mode" data-mode="reverse">Tersten</button>
-      <button class="mode" data-mode="atlas">Görsel Atlas</button>
-      <button class="mode accent" id="btn-exam">18’lik Deneme</button>
+      <div id="bt-form">
+        <div class="build-card">
+          <div class="row-2">
+            <select id="cp-topic" class="inp"></select>
+            <button class="ghost" id="btn-new-topic">+ Konu</button>
+          </div>
+
+          <input id="cp-question" class="inp" type="text"
+                 placeholder="Soru metni — örn. Bor madeni nerelerde çıkarılır?">
+
+          <div class="pick-box">
+            <span class="hint">Haritadan cevapları tıkla. Rozetteki <b>+</b> ile o ilin ilçesini yaz.</span>
+            <div class="picks" id="cp-picks"><span class="hint">— henüz seçim yok —</span></div>
+          </div>
+
+          <div class="row-2">
+            <span class="grow"></span>
+            <button class="ghost" id="cp-cancel" hidden>Vazgeç</button>
+            <button class="accent" id="cp-add">Ekle</button>
+          </div>
+        </div>
+
+        <div class="qlist-head">
+          <h3 id="qlist-title">Bu konudaki sorular</h3>
+          <span class="hint" id="qlist-count"></span>
+        </div>
+        <div class="qlist" id="qlist"></div>
+      </div>
+
+      <div id="bt-text" hidden>
+        <div class="build-card">
+          <textarea id="tx-input" class="inp mono" rows="10" placeholder="# Barajlar | Baraj – il eşleştirmesi
+Atatürk Barajı hangi illerimizdedir? = Şanlıurfa, Adıyaman | Şanlıurfa–Bozova, Adıyaman–Kâhta
+Keban Barajı hangi ilimizdedir? = Elazığ, ~Fırat | Elazığ–Keban
+Hirfanlı Barajı hangi ilimizdedir? = Kırşehir"></textarea>
+          <div class="row-2">
+            <button class="ghost" id="tx-help">Biçim nasıl?</button>
+            <span class="grow"></span>
+            <button class="ghost"  id="tx-check">Denetle</button>
+            <button class="accent" id="tx-add">İçe aktar</button>
+          </div>
+          <div id="tx-report" class="tx-report"></div>
+        </div>
+      </div>
     </div>
   </section>
 </main>
 
-<!-- ============ KONU HAVUZU ============ -->
-<section class="pool">
-  <div class="pool-head">
-    <h2>Konu havuzu</h2>
-    <div class="pool-actions">
-      <label class="ghost file-btn">İçe aktar (JSON)
-        <input type="file" id="import-file" accept="application/json,.json" hidden>
-      </label>
-      <button class="ghost" id="btn-export-all">Tümünü dışa aktar</button>
-      <button class="ghost" id="btn-new-topic">Yeni konu</button>
-    </div>
-  </div>
-  <div class="cards" id="topic-cards"></div>
-</section>
-
-<!-- ============ HIZLI SORU EKLEME ============ -->
-<section class="composer" id="composer">
-  <h2>Hızlı soru ekle</h2>
-  <div class="composer-grid">
-    <select id="cp-topic" class="inp"></select>
-    <input   id="cp-question" class="inp" type="text" placeholder="Soru metni — örn. Bor madeni nerelerde çıkarılır?">
-    <input   id="cp-note" class="inp" type="text" placeholder="İlçe / not — örn. Divriği">
-    <label class="chk"><input type="checkbox" id="cp-important"> Çıkmış soru ★</label>
-    <button class="accent" id="cp-add">Ekle</button>
-  </div>
-  <div class="composer-picks">
-    <span class="hint" id="cp-hint">Cevap illerini haritadan tıklayarak seç (seçim modu kapalı).</span>
-    <button class="ghost" id="cp-pickmode">Haritadan il seç</button>
-    <span class="picks" id="cp-picks"></span>
-  </div>
-</section>
-
-<!-- ============ ÇALIŞMA TAKVİMİ ============ -->
-<section class="streak">
+<!-- ============ ÇALIŞMA TAKVİMİ (CFG.SHOW_STREAK) ============ -->
+<section class="streak" id="streak-section" hidden>
   <div class="pool-head">
     <h2>Zinciri kırma</h2>
     <span class="hint" id="streak-info">—</span>
@@ -149,12 +196,7 @@
   <div id="streak-cal"></div>
 </section>
 
-<footer class="foot">
-  <span>Veriler tarayıcıda <code>localStorage</code> içinde tutulur. C# API açıksa oradan senkronlanır.</span>
-  <button class="ghost danger" id="btn-wipe">Tüm ilerlemeyi sıfırla</button>
-</footer>
-
-<!-- ============ MODAL: KARNE / ATLAS MEDYA ============ -->
+<!-- ============ MODAL ============ -->
 <div class="modal-back" id="modal-back" hidden>
   <div class="modal" id="modal">
     <button class="modal-x" id="modal-x" aria-label="Kapat">×</button>
@@ -162,7 +204,6 @@
   </div>
 </div>
 
-<!-- Karne görseli (story formatı, 1080x1920 oranında) -->
 <div id="story-canvas-src" class="story-card" hidden>
   <div class="story-top">
     <div class="story-kicker">KPSS · Coğrafya Sahası</div>
@@ -173,8 +214,9 @@
   <div class="story-foot" id="st-foot"></div>
 </div>
 
-<!-- Harita verisi. veri-donustur.html ile üretilir. file:// altında çalışmasının sebebi bu. -->
 <script src="js/tr-cities-data.js"></script>
+<script src="js/tr-akarsular-data.js" onerror="console.info('Akarsu verisi yok.')"></script>
+<script src="js/tr-goller-data.js" onerror="console.info('Göl verisi yok.')"></script>
 
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
@@ -185,12 +227,9 @@
 <script src="js/ui.js"></script>
 
 <script>
-// Service worker sadece güvenli köken altında çalışır.
-// file:// ile açtığında sessizce atlanır, uygulama yine normal çalışır.
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js")
-      .catch(e => console.warn("SW kaydedilemedi:", e.message));
+    navigator.serviceWorker.register("sw.js").catch(e => console.warn("SW:", e.message));
   });
 }
 </script>

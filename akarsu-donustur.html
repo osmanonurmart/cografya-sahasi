@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Akarsu dönüştürücü — Natural Earth ➜ JS</title>
+<style>
+  :root{--ink:#1E2A2F;--soft:#5B6B72;--line:#C9BFAC;--accent:#2B6C8F;--ok:#2E7D5B;--bad:#B4453C}
+  body{font-family:"Segoe UI",system-ui,sans-serif;max-width:820px;margin:36px auto;padding:0 20px;
+       color:var(--ink);background:#F2EEE4;line-height:1.55}
+  h1{font-size:1.35rem;margin-bottom:2px}
+  h2{font-size:1rem;margin-top:26px}
+  p.lead{color:var(--soft);margin-top:0}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:34px 20px;text-align:center;
+        background:#FBF8F1;cursor:pointer;transition:.15s;margin-top:14px}
+  .drop.on{border-color:var(--accent);background:#EAF2F7}
+  .drop b{display:block;font-size:1rem;margin-bottom:4px}
+  .drop span{color:var(--soft);font-size:.86rem}
+  #log{margin-top:16px;font-family:ui-monospace,Consolas,monospace;font-size:.8rem;
+       background:#FBF8F1;border:1px solid var(--line);border-radius:10px;padding:14px;
+       white-space:pre-wrap;min-height:36px;max-height:320px;overflow:auto}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  button{font:inherit;padding:9px 16px;border-radius:8px;border:1px solid var(--accent);
+         background:var(--accent);color:#F2EEE4;cursor:pointer;margin:12px 6px 0 0}
+  button[disabled]{opacity:.4;cursor:default}
+  button.alt{background:transparent;color:var(--accent)}
+  code,pre{font-family:ui-monospace,Consolas,monospace;font-size:.82rem}
+  pre{background:#E7E1D3;padding:10px;border-radius:8px;overflow-x:auto}
+  code{background:#E7E1D3;padding:1px 5px;border-radius:4px}
+  ol li{margin:8px 0}
+  table{border-collapse:collapse;width:100%;font-size:.85rem;margin-top:8px}
+  th,td{border:1px solid var(--line);padding:5px 8px;text-align:left}
+  th{background:#E7E1D3}
+</style>
+</head>
+<body>
+
+<h1>Akarsu dönüştürücü</h1>
+<p class="lead">Natural Earth verisini Türkiye'ye kırpar, Türkçe adları yerleştirir ve <code>js/tr-akarsular-data.js</code> üretir.</p>
+
+<h2>1. Veriyi indir</h2>
+<p>PowerShell'i proje klasöründe aç ve şunu yapıştır:</p>
+<pre>iwr https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_rivers_lake_centerlines.geojson -OutFile ne_rivers.geojson
+iwr https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_rivers_europe.geojson -OutFile ne_rivers_eu.geojson
+iwr https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_lakes.geojson -OutFile ne_lakes.geojson</pre>
+<p class="lead">İkinci dosya Avrupa ek katmanı — Türkiye'de çok daha fazla kol içeriyor. Üçüncüsü göller, isteğe bağlı.</p>
+
+<h2>2. Buraya sürükle</h2>
+<div class="drop" id="drop">
+  <b>Dosyaları buraya bırak</b>
+  <span>üçünü aynı anda verebilirsin · ya da tıklayıp seç</span>
+  <input type="file" id="file" accept=".geojson,.json" multiple hidden>
+</div>
+
+<div id="log">Dosya bekleniyor…</div>
+<button id="dl" disabled>tr-akarsular-data.js indir</button>
+<button id="dlg" class="alt" disabled>tr-goller-data.js indir</button>
+
+<h2>3. Sonra</h2>
+<ol>
+  <li>İnen dosyaları projedeki <code>js/</code> klasörüne at.</li>
+  <li><code>index.html</code>'i aç, üstteki <b>Akarsular</b> şalterini aç.</li>
+  <li>Sorularda akarsu cevabı yazarken başına tilde koy: <code>~Fırat</code></li>
+</ol>
+
+<h2>Türkçe ad eşlemesi</h2>
+<p class="lead">Natural Earth adları İngilizce tutuyor. Aşağıdaki tablo otomatik uygulanıyor; eksik gördüğün olursa bu dosyadaki <code>TR_AD</code> nesnesine ekleyebilirsin.</p>
+<table id="adtablo"><tr><th>Natural Earth</th><th>Türkçe</th></tr></table>
+
+<script>
+/* Natural Earth İngilizce adları → Türkçe karşılıkları */
+const TR_AD = {
+  "Kizil Irmak":"Kızılırmak", "Kizilirmak":"Kızılırmak",
+  "Yesil Irmak":"Yeşilırmak", "Yesilirmak":"Yeşilırmak",
+  "Sakarya":"Sakarya", "Susurluk":"Susurluk",
+  "Buyuk Menderes":"Büyük Menderes", "Menderes":"Büyük Menderes",
+  "Kucuk Menderes":"Küçük Menderes", "Gediz":"Gediz", "Bakir":"Bakırçay",
+  "Seyhan":"Seyhan", "Ceyhan":"Ceyhan", "Goksu":"Göksu", "Manavgat":"Manavgat",
+  "Aksu":"Aksu", "Koprucay":"Köprüçay", "Dalaman":"Dalaman",
+  "Euphrates":"Fırat", "Firat":"Fırat", "Al Furat":"Fırat",
+  "Tigris":"Dicle", "Dicle":"Dicle", "Dijlah":"Dicle",
+  "Murat":"Murat", "Murat Nehri":"Murat", "Karasu":"Karasu",
+  "Coruh":"Çoruh", "Çoruh":"Çoruh", "Chorokhi":"Çoruh",
+  "Aras":"Aras", "Araks":"Aras", "Araz":"Aras",
+  "Kura":"Kura", "Meric":"Meriç", "Maritsa":"Meriç", "Evros":"Meriç",
+  "Ergene":"Ergene", "Asi":"Asi", "Orontes":"Asi",
+  "Zap":"Zap", "Great Zab":"Büyük Zap", "Botan":"Botan",
+  "Munzur":"Munzur", "Devrez":"Devrez", "Filyos":"Filyos", "Bartin":"Bartın",
+  "Yenice":"Yenice", "Kelkit":"Kelkit", "Harsit":"Harşit", "Degirmendere":"Değirmendere"
+};
+
+const TR_BBOX = { lonMin: 25.0, lonMax: 45.5, latMin: 35.4, latMax: 42.6 };
+
+const drop=document.getElementById("drop"), fileEl=document.getElementById("file");
+const log=document.getElementById("log"), dl=document.getElementById("dl"), dlg=document.getElementById("dlg");
+let outRivers=null, outLakes=null, satirlar=[];
+
+// ad tablosunu ekrana bas
+const tb=document.getElementById("adtablo");
+Object.keys(TR_AD).slice(0,200).forEach(k=>{
+  if(k===TR_AD[k]) return;
+  const r=tb.insertRow(); r.insertCell().textContent=k; r.insertCell().textContent=TR_AD[k];
+});
+
+drop.onclick=()=>fileEl.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("on")};
+drop.ondragleave=()=>drop.classList.remove("on");
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove("on");oku(e.dataTransfer.files)};
+fileEl.onchange=e=>oku(e.target.files);
+
+function yaz(t,c){ satirlar.push(c?`<span class="${c}">${t}</span>`:t); log.innerHTML=satirlar.join("\n"); }
+
+function oku(files){
+  satirlar=[]; log.innerHTML="";
+  const list=Array.from(files);
+  let kalan=list.length;
+  const rivers=[], lakes=[];
+
+  list.forEach(f=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const gj=JSON.parse(r.result);
+        const tip=(f.name.toLowerCase().indexOf("lake")>-1 && f.name.toLowerCase().indexOf("centerline")===-1)?"lake":"river";
+        yaz(`${f.name} — ${gj.features?gj.features.length:0} kayıt (${tip==="lake"?"göl":"akarsu"})`);
+        (gj.features||[]).forEach(ft=>(tip==="lake"?lakes:rivers).push(ft));
+      }catch(err){ yaz(`${f.name} okunamadı: ${err.message}`,"bad"); }
+      if(--kalan===0) isle(rivers,lakes);
+    };
+    r.readAsText(f,"utf-8");
+  });
+}
+
+/* geometri Türkiye kutusuna değiyor mu */
+function kesisiyor(geom){
+  let hit=false;
+  const bak=c=>{
+    if(hit) return;
+    if(typeof c[0]==="number"){
+      if(c[0]>=TR_BBOX.lonMin&&c[0]<=TR_BBOX.lonMax&&c[1]>=TR_BBOX.latMin&&c[1]<=TR_BBOX.latMax) hit=true;
+    } else c.forEach(bak);
+  };
+  if(geom&&geom.coordinates) bak(geom.coordinates);
+  return hit;
+}
+
+/* kutu dışındaki uzun kuyrukları at — dosya küçülsün */
+function kirp(geom){
+  const ic=p=>p[0]>=TR_BBOX.lonMin-1&&p[0]<=TR_BBOX.lonMax+1&&p[1]>=TR_BBOX.latMin-1&&p[1]<=TR_BBOX.latMax+1;
+  const hat=c=>{ const out=[],cur=[]; c.forEach(p=>{ if(ic(p)) cur.push(p); else if(cur.length){out.push(cur.slice());cur.length=0;} }); if(cur.length)out.push(cur); return out.filter(x=>x.length>1); };
+  if(geom.type==="LineString"){ const p=hat(geom.coordinates); return p.length?{type:"MultiLineString",coordinates:p}:null; }
+  if(geom.type==="MultiLineString"){ const p=[]; geom.coordinates.forEach(l=>hat(l).forEach(x=>p.push(x))); return p.length?{type:"MultiLineString",coordinates:p}:null; }
+  return geom;
+}
+
+function ad(pr){
+  const h=pr.name||pr.name_en||pr.NAME||pr.name_tr||"";
+  return TR_AD[h]||h;
+}
+
+function isle(rivers,lakes){
+  // akarsular
+  const secili=[], adlar={};
+  rivers.forEach(ft=>{
+    if(!kesisiyor(ft.geometry)) return;
+    const isim=ad(ft.properties||{});
+    if(!isim) return;
+    const g=kirp(ft.geometry); if(!g) return;
+    secili.push({type:"Feature",properties:{name:isim},geometry:g});
+    adlar[isim]=(adlar[isim]||0)+1;
+  });
+
+  if(!secili.length){ yaz("Türkiye sınırlarında akarsu bulunamadı. Doğru dosyaları verdiğinden emin ol.","bad"); return; }
+
+  const liste=Object.keys(adlar).sort((a,b)=>a.localeCompare(b,"tr"));
+  yaz("");
+  yaz(`Türkiye'de kalan akarsu parçası: ${secili.length}`);
+  yaz(`Farklı akarsu adı: ${liste.length}`);
+  yaz("");
+  yaz("Bulunan adlar: "+liste.join(", "));
+
+  const ingilizce=liste.filter(x=>/^[A-Za-z\s'\-\.]+$/.test(x));
+  if(ingilizce.length) yaz("\nHâlâ İngilizce görünenler (TR_AD tablosuna ekleyebilirsin):\n  "+ingilizce.join(", "),"bad");
+
+  outRivers="/* Natural Earth — Türkiye kesiti, otomatik üretildi */\n"+
+    "window.TR_AKARSULAR = "+JSON.stringify({type:"FeatureCollection",features:secili})+";\n";
+  yaz(`\nAkarsu dosyası hazır: ${(outRivers.length/1024).toFixed(0)} KB`,"ok");
+  dl.disabled=false;
+
+  // göller
+  if(lakes.length){
+    const gs=lakes.filter(ft=>kesisiyor(ft.geometry))
+      .map(ft=>({type:"Feature",properties:{name:ad(ft.properties||{})},geometry:ft.geometry}));
+    if(gs.length){
+      outLakes="/* Natural Earth göller — Türkiye kesiti */\n"+
+        "window.TR_GOLLER = "+JSON.stringify({type:"FeatureCollection",features:gs})+";\n";
+      yaz(`Göl dosyası hazır: ${gs.length} göl, ${(outLakes.length/1024).toFixed(0)} KB`,"ok");
+      dlg.disabled=false;
+    }
+  }
+}
+
+function indir(icerik,adi){
+  const b=new Blob([icerik],{type:"text/javascript;charset=utf-8"});
+  const u=URL.createObjectURL(b), a=document.createElement("a");
+  a.href=u; a.download=adi; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),4000);
+}
+dl.onclick=()=>indir(outRivers,"tr-akarsular-data.js");
+dlg.onclick=()=>indir(outLakes,"tr-goller-data.js");
+</script>
+</body>
+</html>

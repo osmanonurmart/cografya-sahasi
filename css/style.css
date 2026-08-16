@@ -124,14 +124,6 @@ html[data-theme="dark"] .sw[aria-pressed="true"]{color:#10171A}
 .legend{margin-left:auto;font-size:.75rem;color:var(--ink-soft)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 10px;vertical-align:-1px}
 
-/* haritanın sağ alt köşesindeki yakınlaştırma anahtarı */
-.map-zoom{
-  position:absolute;right:14px;bottom:14px;z-index:5;
-  display:flex;gap:6px;align-items:center;
-  background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;
-  box-shadow:var(--shadow);
-}
-.map-zoom .ghost{border:none;padding:5px 10px}
 
 /* yarım kalan test çubuğu */
 .resume-bar{
@@ -147,6 +139,7 @@ html[data-theme="dark"] .sw[aria-pressed="true"]{color:#10171A}
   fill:var(--map-fill); stroke:var(--map-stroke); stroke-width:.5;
   cursor:pointer; transition:fill .12s linear;
 }
+#tr-map{touch-action:pan-y}   /* sabit harita: parmakla kaydırma sayfaya gitsin */
 .city:hover{fill:var(--map-hover)}
 .city.is-correct{fill:var(--ok)}
 .city.is-wrong{fill:var(--bad)}
@@ -180,7 +173,7 @@ body.regions-on #bolumler{display:block}
 body.blind .map-tip{display:none}
 
 /* ---------- soru paneli ---------- */
-.quiz-pane{display:flex;flex-direction:column;gap:12px;min-width:0}
+.side-pane{display:flex;flex-direction:column;gap:12px;min-width:0}
 
 .progress-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
 .progress-meta{display:flex;justify-content:space-between;font-size:.8rem;color:var(--ink-soft);margin-bottom:6px}
@@ -333,7 +326,208 @@ html[data-theme="dark"] .accent{color:#10171A}
 
 /* mobilde harita anahtarı biraz daha küçük */
 @media (max-width:620px){
-  .map-zoom{right:8px;bottom:8px}
-  .map-zoom .sw{font-size:.72rem;padding:4px 8px}
   .q-actions{flex-wrap:wrap}
 }
+
+
+/* =========================================================
+   ÇALIŞMA ALANI ANAHTARI
+   ========================================================= */
+.workspace-switch{
+  display:flex;background:var(--paper-2);border:1px solid var(--line);
+  border-radius:999px;padding:3px;gap:3px;
+}
+.workspace-switch .ws{
+  flex:1;font:inherit;font-size:.85rem;font-weight:600;padding:7px 10px;cursor:pointer;
+  background:transparent;border:none;border-radius:999px;color:var(--ink-soft);transition:.15s;
+}
+.workspace-switch .ws.is-on{background:var(--accent);color:var(--paper)}
+html[data-theme="dark"] .workspace-switch .ws.is-on{color:#10171A}
+
+.build-tabs{display:flex;gap:6px}
+.build-tabs .bt{
+  font:inherit;font-size:.8rem;padding:5px 11px;cursor:pointer;
+  background:transparent;border:1px solid var(--line);border-radius:8px;color:var(--ink-soft);
+}
+.build-tabs .bt.is-on{border-color:var(--accent);color:var(--accent);font-weight:600}
+
+.build-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--shadow);
+}
+.row-2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+.pick-box{
+  border:1px dashed var(--line);border-radius:8px;padding:8px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.pick-box .picks{display:flex;gap:4px;flex-wrap:wrap;min-height:24px;align-items:center}
+.inp.mono{font-family:var(--mono);font-size:.82rem;line-height:1.5;resize:vertical}
+
+/* soru listesi */
+.qlist-head{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.qlist-head h3{margin:0;font-size:.9rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft)}
+.qlist-head .hint{margin-left:auto;font-family:var(--mono)}
+.qlist{display:flex;flex-direction:column;gap:5px;max-height:340px;overflow-y:auto;padding-right:2px}
+.qrow{
+  display:flex;gap:6px;align-items:center;
+  background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 9px;
+}
+.qrow.is-editing{border-color:var(--accent);border-width:2px;padding:6px 8px}
+.qrow-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.qrow-q{font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow-a{font-size:.74rem;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow button{font-size:.72rem;padding:3px 7px;flex:none}
+
+.tx-report{font-size:.8rem;line-height:1.5;color:var(--ink-soft)}
+.tx-report .ok{color:var(--ok)} .tx-report .bad{color:var(--bad)}
+pre.fmt{
+  background:var(--paper-2);border:1px solid var(--line);border-radius:8px;
+  padding:10px;font-family:var(--mono);font-size:.78rem;overflow-x:auto;white-space:pre;
+}
+
+/* =========================================================
+   AKARSULAR VE GÖLLER
+   ========================================================= */
+#akarsular{display:none}
+body.rivers-on #akarsular{display:block}
+#goller{display:block}
+
+.river{fill:none;stroke:var(--accent);stroke-width:1.1;stroke-opacity:.75;
+       stroke-linecap:round;stroke-linejoin:round;pointer-events:none;transition:stroke .12s}
+.river.is-correct{stroke:var(--ok);stroke-width:2.6;stroke-opacity:1}
+.river.is-wrong{stroke:var(--bad);stroke-width:2.6;stroke-opacity:1}
+.river.is-picked{stroke:var(--hint);stroke-width:2.6;stroke-opacity:1}
+.river-hit{fill:none;stroke:transparent;stroke-width:9;cursor:pointer}
+.river-dot{fill:var(--accent);fill-opacity:.55;pointer-events:none}
+.river-label{
+  font-size:5.5px;fill:var(--accent);opacity:.75;text-anchor:middle;
+  pointer-events:none;font-family:var(--sans);font-style:italic;
+}
+body.blind .river-label{display:none}
+.lake{fill:var(--accent);fill-opacity:.35;stroke:var(--accent);stroke-width:.4}
+
+/* =========================================================
+   HARİTA ÜSTÜ BALON (ilçe bilgisi)
+   ========================================================= */
+.popup-layer{position:absolute;inset:0;pointer-events:none;z-index:8}
+.map-popup{
+  position:absolute;transform:translate(-50%,-118%) scale(.94);
+  background:var(--ink);color:var(--paper);
+  padding:6px 11px;border-radius:9px;font-size:.78rem;line-height:1.35;
+  white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.35);
+  opacity:0;transition:opacity .18s ease, transform .18s ease;
+  display:flex;flex-direction:column;align-items:center;max-width:220px;
+}
+.map-popup.on{opacity:.97;transform:translate(-50%,-118%) scale(1)}
+.map-popup b{font-size:.82rem}
+.map-popup span{opacity:.82;white-space:normal;text-align:center}
+.map-popup::after{
+  content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:6px solid transparent;border-top-color:var(--ink);
+}
+
+/* soru oluştur modunda harita imleci farklı olsun */
+body.build-mode .city{cursor:crosshair}
+
+.chip.riv{background:var(--accent);border-color:var(--accent);color:var(--paper)}
+html[data-theme="dark"] .chip.riv{color:#10171A}
+.chip.miss.riv{background:var(--bad);border-color:var(--bad);color:#fff}
+
+@media (max-width:900px){
+  .qlist{max-height:260px}
+}
+
+
+/* =========================================================
+   PROFİL SEÇİM EKRANI
+   ========================================================= */
+.profile-screen{
+  position:fixed;inset:0;z-index:200;background:var(--paper);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.profile-screen[hidden]{display:none}
+.ps-inner{text-align:center;max-width:760px;width:100%}
+.ps-inner h1{font-size:1.9rem;font-weight:700;margin:0 0 28px;letter-spacing:-.01em}
+.ps-grid{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;margin-bottom:26px}
+.ps-card{
+  display:flex;flex-direction:column;align-items:center;gap:9px;cursor:pointer;
+  width:118px;transition:transform .15s;
+}
+.ps-card:hover{transform:translateY(-3px)}
+.ps-face{
+  width:104px;height:104px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:2.1rem;font-weight:700;color:#fff;letter-spacing:.02em;
+  border:3px solid transparent;transition:border-color .15s;
+}
+.ps-card:hover .ps-face{border-color:var(--ink)}
+.ps-face.plus{
+  background:transparent;border:2px dashed var(--line);color:var(--ink-soft);font-weight:300;font-size:2.4rem;
+}
+.ps-name{font-size:.92rem;color:var(--ink-soft);word-break:break-word}
+.ps-tools{display:flex;gap:4px;margin-top:2px}
+
+/* =========================================================
+   ÜST ŞERİT AVATARI
+   ========================================================= */
+.avatar{
+  width:34px;height:34px;border-radius:9px;border:none;cursor:pointer;
+  font:inherit;font-weight:700;font-size:.82rem;color:#fff;
+  display:flex;align-items:center;justify-content:center;flex:none;
+}
+.avatar:hover{outline:2px solid var(--ink);outline-offset:2px}
+
+/* =========================================================
+   İKON BUTONLARI
+   ========================================================= */
+.ico{
+  font:inherit;font-size:.88rem;line-height:1;padding:4px 7px;cursor:pointer;
+  background:transparent;border:1px solid var(--line);border-radius:7px;
+  color:var(--ink-soft);flex:none;transition:.15s;
+}
+.ico:hover{border-color:var(--accent);color:var(--accent)}
+.ico.danger:hover{border-color:var(--bad);color:var(--bad)}
+label.ico{display:inline-flex;align-items:center}
+
+/* =========================================================
+   KONU LİSTESİ (yan panel)
+   ========================================================= */
+.topics-block{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:10px 12px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow);
+}
+.topics-head{display:flex;align-items:center;gap:7px}
+.topics-head h3{
+  margin:0;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);
+}
+.topics-head .hint{font-size:.72rem}
+.topics-head .ico{margin-left:0}
+.topics-head .ico:first-of-type{margin-left:auto}
+
+.topic-list{display:flex;flex-direction:column;gap:4px;max-height:290px;overflow-y:auto}
+.topic-row{
+  display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:8px;
+  border:1px solid transparent;cursor:pointer;user-select:none;transition:.12s;
+}
+.topic-row:hover{background:var(--paper-2)}
+.topic-row.is-sel{border-color:var(--line);background:var(--paper-2)}
+.topic-row.is-active{border-color:var(--accent);border-left-width:3px}
+.t-title{flex:1;font-size:.92rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-count{font-family:var(--mono);font-size:.74rem;color:var(--ink-soft);flex:none}
+.topic-row .ico{opacity:0;transition:opacity .12s}
+.topic-row:hover .ico,.topic-row.is-sel .ico{opacity:1}
+@media (hover:none){ .topic-row .ico{opacity:1} }
+
+/* =========================================================
+   SEÇİM ROZETİ (+ ile ilçe girişi)
+   ========================================================= */
+.pickchip{display:inline-flex;align-items:center;gap:5px;padding:3px 4px 3px 9px}
+.pc-note{opacity:.75;font-size:.72rem;border-left:1px solid rgba(255,255,255,.35);padding-left:5px}
+.pc-add,.pc-x{
+  font:inherit;font-size:.78rem;line-height:1;cursor:pointer;
+  width:19px;height:19px;border-radius:5px;border:none;
+  background:rgba(255,255,255,.22);color:inherit;
+  display:flex;align-items:center;justify-content:center;padding:0;
+}
+.pc-add:hover,.pc-x:hover{background:rgba(255,255,255,.42)}

@@ -6,6 +6,8 @@ window.CFG = {
   SHOW_TIMER: true,                     // soru üstündeki saniye sayacı
   SHOW_COUNTDOWN: true,                 // üstteki "sınava X gün" bloğu
   SHOW_EXAM_TIME: true,                 // karnede süre satırları
+  SHOW_STREAK: false,                   // "zinciri kırma" çalışma takvimi
+  POPUP_MS: 10000,                      // il balonunun ekranda kalma süresi                      // il üstündeki ilçe balonunun ekranda kalma süresi
   MAP: { W: 1200, H: 760 },
   EXAM_SIZE: 18,
   HINT_AFTER_WRONG: 3,                  // kaç yanlıştan sonra ipucu

@@ -1,22 +1,12 @@
-KURULUM
-=======
+GUNCELLEME v5
+=============
+Zip icindeki "kpss-cografya" klasorunu mevcut klasorunun uzerine kopyala,
+"Degistir" de. Sonra Ctrl+F5.
 
-1) Bu zip'in icindeki "kpss-cografya" klasorunu, masaustundeki MEVCUT
-   "kpss-cografya" klasorunun uzerine kopyala. "Degistir" sorusuna EVET de.
+Zip'e konulmayanlar (sende duruyor):
+  vendor\d3.v5.min.js, vendor\html2canvas.min.js, js\tr-cities-data.js
 
-2) Dokunmayacagin iki sey (zaten sende var, zip'e koymadim):
-   - vendor\d3.v5.min.js  ve  vendor\html2canvas.min.js
-   - js\tr-cities-data.js
-
-   Bunlar eski yerlerinde duracak, uzerine yazilmayacak.
-
-3) index.html'e cift tikla. Ctrl+F5 ile yenile.
-
-KONTROL
-=======
-- Arayuz koyu renkte aciliyor mu?             (gece modu varsayilan)
-- Haritanin sag alt kosesinde "Yakinlastirma: kapali" var mi?
-- Bir konuda "Teste basla" deyince "Duraklat" butonu cikiyor mu?
-- "Hizli soru ekle" bolumunde "Ilce / not" kutusu var mi?
-
-Dordu de varsa kurulum dogru.
+DEGISENLER
+- "Haritayi indir" butonu kaldirildi.
+- Yakinlastirma tamamen kaldirildi, harita sabit.
+- Gece/gunduz salteri kaldirildi, arayuz her zaman gece modunda.

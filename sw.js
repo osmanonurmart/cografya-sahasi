@@ -5,14 +5,18 @@
    Sadece https:// (veya localhost) altında çalışır — file:// altında değil.
    ========================================================= */
 
-const CACHE = "cografya-sahasi-v2";   // dosyaları güncelleyince bu sayıyı artır
+const CACHE = "cografya-sahasi-v5";   // dosyaları güncelleyince bu sayıyı artır
 
 const DOSYALAR = [
   "./",
   "./index.html",
+  "./akarsu-donustur.html",
+  "./veri-donustur.html",
   "./manifest.json",
   "./css/style.css",
   "./js/tr-cities-data.js",
+  "./js/tr-akarsular-data.js",
+  "./js/tr-goller-data.js",
   "./js/config.js",
   "./js/data.js",
   "./js/audio.js",

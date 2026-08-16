@@ -5,7 +5,7 @@
    Sadece https:// (veya localhost) altında çalışır — file:// altında değil.
    ========================================================= */
 
-const CACHE = "cografya-sahasi-v5";   // dosyaları güncelleyince bu sayıyı artır
+const CACHE = "cografya-sahasi-v6";   // dosyaları güncelleyince bu sayıyı artır
 
 const DOSYALAR = [
   "./",
